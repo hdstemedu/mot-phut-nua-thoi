@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhật Ký - Một Phút Nữa Thôi</title>
+    <style>
+        body { font-family: 'Nunito', sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 500px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: auto; }
+        h2 { color: #ff6600; text-align: center; }
+        label { font-weight: bold; margin-top: 10px; display: block; }
+        input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #ff6600; color: white; border: none; border-radius: 5px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        button:hover { background-color: #e65c00; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Hệ Thống "Một Phút Nữa Thôi"</h2>
+    
+    <!-- KHU VỰC CÀI ĐẶT THÔNG TIN CÁ NHÂN (Chỉ hiện lần đầu) -->
+    <div id="profileSection">
+        <p><i>Vui lòng cài đặt thông tin lần đầu tiên:</i></p>
+        <label>Mã Học Sinh:</label> <input type="text" id="maHS">
+        <label>Họ và Tên:</label> <input type="text" id="hoTen">
+        <label>Lớp:</label> <input type="text" id="lop">
+        <label>Trường:</label> <input type="text" id="truong">
+        <button onclick="saveProfile()">Lưu Thông Tin</button>
+    </div>
+
+    <!-- KHU VỰC ĐIỀN NHẬT KÝ (Hiện hằng ngày) -->
+    <div id="diarySection" class="hidden">
+        <p>Chào <span id="displayName" style="color:blue; font-weight:bold;"></span>! Hôm nay bạn học thế nào?</p>
+        <label>Ngày ghi:</label> <input type="date" id="ngay">
+        <label>Thời gian dự định dùng ĐT (phút):</label> <input type="number" id="duDinhDT" value="0">
+        <label>Thực tế đã dùng ĐT (phút):</label> <input type="number" id="thucTeDT" value="0">
+        <label>Giờ dự định học (HH:MM):</label> <input type="time" id="gioDuDinh">
+        <label>Giờ bắt đầu học thực tế (HH:MM):</label> <input type="time" id="gioBatDau">
+        
+        <label>Cảm xúc trước khi học:</label>
+        <select id="camXuc">
+            <option value="Bình thường">Bình thường</option>
+            <option value="Chán nản">Chán nản</option>
+            <option value="Mệt mỏi">Mệt mỏi</option>
+            <option value="Hào hứng">Hào hứng</option>
+        </select>
+        
+        <label>Hoạt động đã làm trên điện thoại:</label>
+        <input type="text" id="hoatDong" placeholder="VD: Lướt TikTok, xem YouTube...">
+        
+        <button onclick="submitDiary()">Gửi Nhật Ký</button>
+        <button onclick="resetProfile()" style="background-color: #999; margin-top: 10px;">Cài đặt lại thông tin</button>
+        <p id="statusMsg" style="text-align:center; color: green; margin-top:10px;"></p>
+    </div>
+</div>
+
+<script>
+    // Link Google Apps Script Web App của bạn
+    const API_URL = "https://script.google.com/macros/s/AKfycbxQ8tbzZ2lOpdoGTGWU5CRUXiW8NbWpXCdTpmm2ayRu-v1ZKoPkwrVIuH2RbBbHPDlBBA/exec"; 
+    // Thay link bạn đã Copy ở Google Sheets vào đây
+
+    // Kiểm tra xem đã có Profile chưa
+    function checkProfile() {
+        let profile = JSON.parse(localStorage.getItem("studentProfile"));
+        if (profile) {
+            document.getElementById("profileSection").classList.add("hidden");
+            document.getElementById("diarySection").classList.remove("hidden");
+            document.getElementById("displayName").innerText = profile.hoTen;
+            document.getElementById("ngay").valueAsDate = new Date(); // Tự động lấy ngày hôm nay
+        } else {
+            document.getElementById("profileSection").classList.remove("hidden");
+            document.getElementById("diarySection").classList.add("hidden");
+        }
+    }
+
+    // Lưu Profile vào Local Storage
+    function saveProfile() {
+        let profile = {
+            maHS: document.getElementById("maHS").value,
+            hoTen: document.getElementById("hoTen").value,
+            lop: document.getElementById("lop").value,
+            truong: document.getElementById("truong").value
+        };
+        if(!profile.maHS || !profile.hoTen) {
+            alert("Vui lòng điền đủ Mã HS và Họ Tên!"); return;
+        }
+        localStorage.setItem("studentProfile", JSON.stringify(profile));
+        checkProfile();
+    }
+
+    // Gửi dữ liệu nhật ký
+    function submitDiary() {
+        let profile = JSON.parse(localStorage.getItem("studentProfile"));
+        
+        let diaryData = {
+            maHS: profile.maHS,
+            hoTen: profile.hoTen,
+            lop: profile.lop,
+            truong: profile.truong,
+            ngay: document.getElementById("ngay").value,
+            duDinhDT: document.getElementById("duDinhDT").value,
+            thucTeDT: document.getElementById("thucTeDT").value,
+            gioDuDinh: document.getElementById("gioDuDinh").value,
+            gioBatDau: document.getElementById("gioBatDau").value,
+            camXuc: document.getElementById("camXuc").value,
+            hoatDong: document.getElementById("hoatDong").value
+        };
+
+        document.getElementById("statusMsg").innerText = "Đang gửi dữ liệu...";
+        document.getElementById("statusMsg").style.color = "blue";
+        
+        fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8' // Thêm dòng này để xử lý CORS
+            },
+            body: JSON.stringify(diaryData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === "success") {
+                document.getElementById("statusMsg").innerText = "Đã lưu nhật ký thành công!";
+                document.getElementById("statusMsg").style.color = "green";
+                // Reset form
+                document.getElementById("duDinhDT").value = "0";
+                document.getElementById("thucTeDT").value = "0";
+            } else {
+                document.getElementById("statusMsg").innerText = "Lỗi từ máy chủ Google!";
+                document.getElementById("statusMsg").style.color = "red";
+            }
+        })
+        .catch(error => {
+            document.getElementById("statusMsg").innerText = "Lỗi do chạy trên máy cá nhân (file://). Hãy đưa lên GitHub!";
+            document.getElementById("statusMsg").style.color = "red";
+            console.error("Chi tiết lỗi:", error);
+        });
+    }
+
+    function resetProfile() {
+        localStorage.removeItem("studentProfile");
+        checkProfile();
+    }
+
+    // Khởi chạy khi tải trang
+    checkProfile();
+</script>
+</body>
+</html>
