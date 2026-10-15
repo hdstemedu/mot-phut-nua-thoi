@@ -132,7 +132,7 @@
             }
         })
         .catch(error => {
-            document.getElementById("statusMsg").innerText = "Lỗi do chạy trên máy cá nhân (file://). Hãy đưa lên GitHub!";
+            document.getElementById("statusMsg").innerText = "Lỗi kết nối mạng hoặc API chưa được cấu hình quyền Bất kỳ ai!";
             document.getElementById("statusMsg").style.color = "red";
             console.error("Chi tiết lỗi:", error);
         });
