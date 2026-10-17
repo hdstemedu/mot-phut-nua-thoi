@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống - Một Phút Nữa Thôi</title>
+    <title>Trợ Lý - Một Phút Nữa Thôi</title>
     <!-- Nhúng thư viện AI của Google -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
@@ -24,6 +24,18 @@
         /* Bảng thống kê AI */
         .ai-stats { background: #eef2f3; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center; font-size: 18px; font-weight: bold; }
         .ai-stats span { color: red; }
+
+        /* Cảnh báo và Toggle */
+        .alert-settings { margin-top: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; display: flex; justify-content: space-between; align-items: center; }
+        .alert-message { color: red; font-weight: bold; text-align: center; margin-top: 10px; display: none; padding: 10px; border: 1px solid red; border-radius: 5px; background-color: #ffe6e6; }
+        
+        /* Switch Toggle Style */
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #ff6600; }
+        input:checked + .slider:before { transform: translateX(26px); }
     </style>
 </head>
 <body>
@@ -31,13 +43,29 @@
 <div class="container">
     <h2>Trợ Lý "Một Phút Nữa Thôi"</h2>
     
-    <!-- KHU VỰC 1: CAMERA AI (Sẽ hiện khi đã có Profile) -->
+    <!-- KHU VỰC 1: CAMERA AI -->
     <div id="aiSection" class="hidden">
         <h3>Giám sát Học Tập</h3>
+        
+        <!-- Toggle Cảnh Báo -->
+        <div class="alert-settings">
+            <span>Bật cảnh báo sao nhãng (>2 phút)</span>
+            <label class="switch">
+                <input type="checkbox" id="toggleAlert" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+        
         <button onclick="startStudy()" id="btnStart" style="background-color: #28a745;">▶ Bắt Đầu Học</button>
         <button onclick="stopStudy()" id="btnStop" class="hidden" style="background-color: #dc3545;">⏹ Kết Thúc Học</button>
         
         <div id="webcam-container"></div>
+        
+        <!-- Thông báo Cảnh Báo Text -->
+        <div id="alertMessage" class="alert-message">
+            ⚠️ Bạn đang không tập trung học bài, hãy quay lại và học hành chăm chỉ nhé!
+        </div>
+
         <div class="ai-stats" id="statsBoard" class="hidden">
             Trạng thái hiện tại: <span id="currentStatus" style="color:blue;">Đang chờ...</span><br>
             ⏳ Sao nhãng (Điện thoại): <span id="timePhone">0</span> giây
@@ -82,13 +110,17 @@
 
 <script>
     // ---------------- THIẾT LẬP CƠ BẢN ----------------
-    const API_URL = "https://script.google.com/macros/s/AKfycbyPeocMhbWgbw79pXfsouG0LjID7fbCAAbbcZurcK6nfnaFUsX_D9WpjoiOJh1EKubWuw/exec"; // Thay bằng link Google Apps Script
-    const URL_MODEL = "https://teachablemachine.withgoogle.com/models/96-U7HX_v/"; // Thay bằng link AI của bạn
+    const API_URL = "https://script.google.com/macros/s/AKfycbyPeocMhbWgbw79pXfsouG0LjID7fbCAAbbcZurcK6nfnaFUsX_D9WpjoiOJh1EKubWuw/exec"; 
+    const URL_MODEL = "https://teachablemachine.withgoogle.com/models/96-U7HX_v/"; 
 
     let model, webcam, maxPredictions;
     let isPredicting = false;
     let lastTick;
     let thoiGianDienThoai = 0; // Tính bằng giây
+    let lastAlertTime = 0; // Lưu thời gian cảnh báo cuối cùng để tránh cảnh báo liên tục
+
+    // Đối tượng SpeechSynthesis cho cảnh báo bằng giọng nói
+    const synth = window.speechSynthesis;
 
     // ---------------- HỆ THỐNG PROFILE ----------------
     function checkProfile() {
@@ -117,6 +149,7 @@
         document.getElementById("btnStart").classList.add("hidden");
         document.getElementById("btnStop").classList.remove("hidden");
         document.getElementById("currentStatus").innerText = "Đang khởi động Camera...";
+        document.getElementById("statsBoard").classList.remove("hidden");
 
         const modelURL = URL_MODEL + "model.json";
         const metadataURL = URL_MODEL + "metadata.json";
@@ -132,11 +165,12 @@
         await webcam.play();
         window.requestAnimationFrame(loop);
 
-        document.getElementById("webcam-container").innerHTML = ""; // Xóa bộ đệm cũ
+        document.getElementById("webcam-container").innerHTML = ""; 
         document.getElementById("webcam-container").appendChild(webcam.canvas);
         
         isPredicting = true;
         lastTick = Date.now();
+        thoiGianDienThoai = 0; // Reset thời gian mỗi lần bắt đầu
         
         // Tự động ghi nhận giờ bắt đầu
         let now = new Date();
@@ -150,6 +184,33 @@
             webcam.update(); 
             await predict();
             window.requestAnimationFrame(loop);
+        }
+    }
+
+    function triggerAlert() {
+        const toggleAlert = document.getElementById("toggleAlert").checked;
+        if (!toggleAlert) return; // Nếu tắt cảnh báo thì thoát
+
+        let now = Date.now();
+        // Cảnh báo mỗi 30 giây một lần để tránh spam
+        if (now - lastAlertTime > 30000) {
+            // Hiển thị cảnh báo văn bản
+            document.getElementById("alertMessage").style.display = "block";
+            
+            // Cảnh báo âm thanh (Giọng nói)
+            if (synth.speaking) {
+                synth.cancel(); // Dừng nếu đang nói câu trước đó
+            }
+            const utterThis = new SpeechSynthesisUtterance("Bạn đang không tập trung học bài, hãy quay lại và học hành chăm chỉ nhé");
+            utterThis.lang = 'vi-VN';
+            synth.speak(utterThis);
+
+            lastAlertTime = now;
+            
+            // Ẩn văn bản cảnh báo sau 5 giây
+            setTimeout(() => {
+                document.getElementById("alertMessage").style.display = "none";
+            }, 5000);
         }
     }
 
@@ -173,11 +234,18 @@
         let delta = (now - lastTick) / 1000; // Đổi ra giây
         lastTick = now;
 
-        // CHÚ Ý: Đổi chữ "Điện thoại" thành đúng cái TÊN NHÃN (Class) mà bạn đã đặt trên Teachable Machine
-        if(bestClass.toLowerCase().includes("điện thoại") || bestClass.toLowerCase().includes("phone")) {
+        // Xử lý logic nếu nhận diện điện thoại hoặc sao nhãng
+        // Vui lòng đảm bảo từ khóa 'điện thoại' khớp với nhãn bạn đã train trên Teachable Machine
+        if(bestClass.toLowerCase().includes("điện thoại") || bestClass.toLowerCase().includes("phone") || bestClass.toLowerCase().includes("sao nhãng")) {
             thoiGianDienThoai += delta;
             document.getElementById("timePhone").innerText = Math.floor(thoiGianDienThoai);
             document.getElementById("currentStatus").style.color = "red";
+
+            // Kiểm tra nếu thời gian sao nhãng >= 120 giây (2 phút)
+            if (thoiGianDienThoai >= 120) {
+                triggerAlert();
+            }
+
         } else {
             document.getElementById("currentStatus").style.color = "green";
         }
@@ -189,7 +257,10 @@
         document.getElementById("btnStart").classList.remove("hidden");
         document.getElementById("btnStop").classList.add("hidden");
         document.getElementById("currentStatus").innerText = "Đã kết thúc học";
+        document.getElementById("alertMessage").style.display = "none";
         
+        if(synth.speaking) synth.cancel();
+
         // Tự động điền số phút dùng điện thoại vào form (Làm tròn)
         document.getElementById("thucTeDT").value = Math.floor(thoiGianDienThoai / 60);
     }
