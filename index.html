@@ -236,7 +236,7 @@
 
         // Xử lý logic nếu nhận diện điện thoại hoặc sao nhãng
         // Vui lòng đảm bảo từ khóa 'điện thoại' khớp với nhãn bạn đã train trên Teachable Machine
-        if(bestClass.toLowerCase().includes("điện thoại") || bestClass.toLowerCase().includes("phone") || bestClass.toLowerCase().includes("sao nhãng")) {
+        if(bestClass.toLowerCase().includes("điện thoại") || bestClass.toLowerCase().includes("phone") || bestClass.toLowerCase().includes("sao nhãng") || bestClass.toLowerCase().includes("lacking")) {
             thoiGianDienThoai += delta;
             document.getElementById("timePhone").innerText = Math.floor(thoiGianDienThoai);
             document.getElementById("currentStatus").style.color = "red";
