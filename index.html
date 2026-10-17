@@ -3,41 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhật Ký - Một Phút Nữa Thôi</title>
+    <title>Hệ Thống - Một Phút Nữa Thôi</title>
+    <!-- Nhúng thư viện AI của Google -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         body { font-family: 'Nunito', sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 500px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: auto; }
-        h2 { color: #ff6600; text-align: center; }
+        .container { max-width: 600px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: auto; }
+        h2, h3 { color: #ff6600; text-align: center; }
         label { font-weight: bold; margin-top: 10px; display: block; }
         input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background-color: #ff6600; color: white; border: none; border-radius: 5px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        button { width: 100%; padding: 10px; background-color: #ff6600; color: white; border: none; border-radius: 5px; font-weight: bold; margin-top: 10px; cursor: pointer; }
         button:hover { background-color: #e65c00; }
         .hidden { display: none; }
+        
+        /* Cố định khung Camera */
+        #webcam-container { text-align: center; margin-top: 15px; }
+        canvas { border-radius: 10px; border: 3px solid #ff6600; width: 100%; max-width: 300px; }
+        
+        /* Bảng thống kê AI */
+        .ai-stats { background: #eef2f3; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center; font-size: 18px; font-weight: bold; }
+        .ai-stats span { color: red; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Hệ Thống "Một Phút Nữa Thôi"</h2>
+    <h2>Trợ Lý "Một Phút Nữa Thôi"</h2>
     
-    <!-- KHU VỰC CÀI ĐẶT THÔNG TIN CÁ NHÂN (Chỉ hiện lần đầu) -->
+    <!-- KHU VỰC 1: CAMERA AI (Sẽ hiện khi đã có Profile) -->
+    <div id="aiSection" class="hidden">
+        <h3>Giám sát Học Tập</h3>
+        <button onclick="startStudy()" id="btnStart" style="background-color: #28a745;">▶ Bắt Đầu Học</button>
+        <button onclick="stopStudy()" id="btnStop" class="hidden" style="background-color: #dc3545;">⏹ Kết Thúc Học</button>
+        
+        <div id="webcam-container"></div>
+        <div class="ai-stats" id="statsBoard" class="hidden">
+            Trạng thái hiện tại: <span id="currentStatus" style="color:blue;">Đang chờ...</span><br>
+            ⏳ Sao nhãng (Điện thoại): <span id="timePhone">0</span> giây
+        </div>
+        <hr>
+    </div>
+
+    <!-- KHU VỰC 2: CÀI ĐẶT THÔNG TIN -->
     <div id="profileSection">
-        <p><i>Vui lòng cài đặt thông tin lần đầu tiên:</i></p>
+        <p><i>Cài đặt thông tin lần đầu:</i></p>
         <label>Mã Học Sinh:</label> <input type="text" id="maHS">
         <label>Họ và Tên:</label> <input type="text" id="hoTen">
         <label>Lớp:</label> <input type="text" id="lop">
         <label>Trường:</label> <input type="text" id="truong">
-        <button onclick="saveProfile()">Lưu Thông Tin</button>
+        <button onclick="saveProfile()">Lưu Thông Tin & Bắt Đầu</button>
     </div>
 
-    <!-- KHU VỰC ĐIỀN NHẬT KÝ (Hiện hằng ngày) -->
+    <!-- KHU VỰC 3: ĐIỀN NHẬT KÝ -->
     <div id="diarySection" class="hidden">
-        <p>Chào <span id="displayName" style="color:blue; font-weight:bold;"></span>! Hôm nay bạn học thế nào?</p>
+        <h3>Nhật Ký Ngày Hôm Nay</h3>
         <label>Ngày ghi:</label> <input type="date" id="ngay">
-        <label>Thời gian dự định dùng ĐT (phút):</label> <input type="number" id="duDinhDT" value="0">
-        <label>Thực tế đã dùng ĐT (phút):</label> <input type="number" id="thucTeDT" value="0">
+        <label>Dự định dùng ĐT (phút):</label> <input type="number" id="duDinhDT" value="0">
+        <label>Thực tế đã dùng ĐT (phút):</label> <input type="number" id="thucTeDT" value="0" readonly style="background-color:#e9ecef;">
         <label>Giờ dự định học (HH:MM):</label> <input type="time" id="gioDuDinh">
-        <label>Giờ bắt đầu học thực tế (HH:MM):</label> <input type="time" id="gioBatDau">
+        <label>Giờ bắt đầu thực tế (HH:MM):</label> <input type="time" id="gioBatDau">
         
         <label>Cảm xúc trước khi học:</label>
         <select id="camXuc">
@@ -51,31 +76,31 @@
         <input type="text" id="hoatDong" placeholder="VD: Lướt TikTok, xem YouTube...">
         
         <button onclick="submitDiary()">Gửi Nhật Ký</button>
-        <button onclick="resetProfile()" style="background-color: #999; margin-top: 10px;">Cài đặt lại thông tin</button>
-        <p id="statusMsg" style="text-align:center; color: green; margin-top:10px;"></p>
+        <p id="statusMsg" style="text-align:center; font-weight:bold;"></p>
     </div>
 </div>
 
 <script>
-    // Link Google Apps Script Web App của bạn
-    const API_URL = "https://script.google.com/macros/s/AKfycbyPeocMhbWgbw79pXfsouG0LjID7fbCAAbbcZurcK6nfnaFUsX_D9WpjoiOJh1EKubWuw/exec"; 
-    // Thay link bạn đã Copy ở Google Sheets vào đây
+    // ---------------- THIẾT LẬP CƠ BẢN ----------------
+    const API_URL = "https://script.google.com/macros/s/AKfycbyPeocMhbWgbw79pXfsouG0LjID7fbCAAbbcZurcK6nfnaFUsX_D9WpjoiOJh1EKubWuw/exec"; // Thay bằng link Google Apps Script
+    const URL_MODEL = "https://teachablemachine.withgoogle.com/models/96-U7HX_v/"; // Thay bằng link AI của bạn
 
-    // Kiểm tra xem đã có Profile chưa
+    let model, webcam, maxPredictions;
+    let isPredicting = false;
+    let lastTick;
+    let thoiGianDienThoai = 0; // Tính bằng giây
+
+    // ---------------- HỆ THỐNG PROFILE ----------------
     function checkProfile() {
         let profile = JSON.parse(localStorage.getItem("studentProfile"));
         if (profile) {
             document.getElementById("profileSection").classList.add("hidden");
+            document.getElementById("aiSection").classList.remove("hidden");
             document.getElementById("diarySection").classList.remove("hidden");
-            document.getElementById("displayName").innerText = profile.hoTen;
-            document.getElementById("ngay").valueAsDate = new Date(); // Tự động lấy ngày hôm nay
-        } else {
-            document.getElementById("profileSection").classList.remove("hidden");
-            document.getElementById("diarySection").classList.add("hidden");
+            document.getElementById("ngay").valueAsDate = new Date();
         }
     }
 
-    // Lưu Profile vào Local Storage
     function saveProfile() {
         let profile = {
             maHS: document.getElementById("maHS").value,
@@ -83,17 +108,95 @@
             lop: document.getElementById("lop").value,
             truong: document.getElementById("truong").value
         };
-        if(!profile.maHS || !profile.hoTen) {
-            alert("Vui lòng điền đủ Mã HS và Họ Tên!"); return;
-        }
         localStorage.setItem("studentProfile", JSON.stringify(profile));
         checkProfile();
     }
 
-    // Gửi dữ liệu nhật ký
+    // ---------------- AI CAMERA VISION ----------------
+    async function startStudy() {
+        document.getElementById("btnStart").classList.add("hidden");
+        document.getElementById("btnStop").classList.remove("hidden");
+        document.getElementById("currentStatus").innerText = "Đang khởi động Camera...";
+
+        const modelURL = URL_MODEL + "model.json";
+        const metadataURL = URL_MODEL + "metadata.json";
+
+        // Tải mô hình
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Bật Camera
+        const flip = true; 
+        webcam = new tmImage.Webcam(300, 300, flip); 
+        await webcam.setup(); 
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        document.getElementById("webcam-container").innerHTML = ""; // Xóa bộ đệm cũ
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        
+        isPredicting = true;
+        lastTick = Date.now();
+        
+        // Tự động ghi nhận giờ bắt đầu
+        let now = new Date();
+        let hours = String(now.getHours()).padStart(2, '0');
+        let minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById("gioBatDau").value = `${hours}:${minutes}`;
+    }
+
+    async function loop() {
+        if(isPredicting) {
+            webcam.update(); 
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+    }
+
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        
+        // Tìm hành động có xác suất cao nhất
+        let highestProb = 0;
+        let bestClass = "";
+        for (let i = 0; i < maxPredictions; i++) {
+            if (prediction[i].probability > highestProb) {
+                highestProb = prediction[i].probability;
+                bestClass = prediction[i].className;
+            }
+        }
+        
+        document.getElementById("currentStatus").innerText = bestClass;
+
+        // Tính thời gian sao nhãng
+        let now = Date.now();
+        let delta = (now - lastTick) / 1000; // Đổi ra giây
+        lastTick = now;
+
+        // CHÚ Ý: Đổi chữ "Điện thoại" thành đúng cái TÊN NHÃN (Class) mà bạn đã đặt trên Teachable Machine
+        if(bestClass.toLowerCase().includes("điện thoại") || bestClass.toLowerCase().includes("phone")) {
+            thoiGianDienThoai += delta;
+            document.getElementById("timePhone").innerText = Math.floor(thoiGianDienThoai);
+            document.getElementById("currentStatus").style.color = "red";
+        } else {
+            document.getElementById("currentStatus").style.color = "green";
+        }
+    }
+
+    function stopStudy() {
+        isPredicting = false;
+        if(webcam) webcam.stop();
+        document.getElementById("btnStart").classList.remove("hidden");
+        document.getElementById("btnStop").classList.add("hidden");
+        document.getElementById("currentStatus").innerText = "Đã kết thúc học";
+        
+        // Tự động điền số phút dùng điện thoại vào form (Làm tròn)
+        document.getElementById("thucTeDT").value = Math.floor(thoiGianDienThoai / 60);
+    }
+
+    // ---------------- GỬI DỮ LIỆU GOOGLE SHEETS ----------------
     function submitDiary() {
         let profile = JSON.parse(localStorage.getItem("studentProfile"));
-        
         let diaryData = {
             maHS: profile.maHS,
             hoTen: profile.hoTen,
@@ -113,9 +216,6 @@
         
         fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8' // Thêm dòng này để xử lý CORS
-            },
             body: JSON.stringify(diaryData)
         })
         .then(response => response.json())
@@ -123,27 +223,12 @@
             if(data.status === "success") {
                 document.getElementById("statusMsg").innerText = "Đã lưu nhật ký thành công!";
                 document.getElementById("statusMsg").style.color = "green";
-                // Reset form
-                document.getElementById("duDinhDT").value = "0";
-                document.getElementById("thucTeDT").value = "0";
-            } else {
-                document.getElementById("statusMsg").innerText = "Lỗi từ máy chủ Google!";
-                document.getElementById("statusMsg").style.color = "red";
+                thoiGianDienThoai = 0; // Reset thời gian
+                document.getElementById("timePhone").innerText = "0";
             }
-        })
-        .catch(error => {
-            document.getElementById("statusMsg").innerText = "Lỗi kết nối mạng hoặc API chưa được cấu hình quyền Bất kỳ ai!";
-            document.getElementById("statusMsg").style.color = "red";
-            console.error("Chi tiết lỗi:", error);
         });
     }
 
-    function resetProfile() {
-        localStorage.removeItem("studentProfile");
-        checkProfile();
-    }
-
-    // Khởi chạy khi tải trang
     checkProfile();
 </script>
 </body>
